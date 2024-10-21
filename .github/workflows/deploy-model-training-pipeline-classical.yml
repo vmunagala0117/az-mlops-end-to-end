@@ -24,14 +24,14 @@ jobs:
   # get the infra config file. If it is 'dev' branch, then this job is going to read config-infra-dev.yml
   get-config:
     needs: set-env-branch
-    uses: templates/github-workflows/read-yaml.yml
+    uses: mlops/templates/github-workflows/read-yaml.yml
     with:
       file_name: ${{ needs.set-env-branch.outputs.config-file}}
   
   #Step 1: Register the enviornment
   register-environment:
     needs: get-config
-    uses: templates/github-workflows/register-environment.yml
+    uses: mlops/templates/github-workflows/register-environment.yml
     with:
       resource_group: ${{ needs.get-config.outputs.resource_group }}
       workspace_name: ${{ needs.get-config.outputs.aml_workspace }}
@@ -43,7 +43,7 @@ jobs:
   #Step 2: Register the dataset
   register-dataset:
     needs: get-config
-    uses: templates/github-workflows/register-dataset.yml
+    uses: mlops/templates/github-workflows/register-dataset.yml
     with:
       resource_group: ${{ needs.get-config.outputs.resource_group }}
       workspace_name: ${{ needs.get-config.outputs.aml_workspace }}
@@ -55,7 +55,7 @@ jobs:
   #Step 3: Create a compute instance
   create-compute:
     needs: [get-config]
-    uses: templates/github-workflows/create-compute.yml
+    uses: mlops/templates/github-workflows/create-compute.yml
     with:
       cluster_name: cpu-cluster
       size: Standard_DS3_v2
@@ -70,7 +70,7 @@ jobs:
   #Step 4: Train the model
   run-model-training-pipeline:
     needs: [get-config, register-environment, register-dataset, create-compute]
-    uses: templates/github-workflows/run-pipeline.yml@main
+    uses: mlops/templates/github-workflows/run-pipeline.yml@main
     with:
       resource_group: ${{ needs.get-config.outputs.resource_group }}
       workspace_name: ${{ needs.get-config.outputs.aml_workspace }}

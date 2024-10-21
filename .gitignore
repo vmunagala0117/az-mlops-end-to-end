@@ -139,3 +139,5 @@ terraform.tfvars
 
 /infrastructure/bicep/main.json
 ! /infrastructure/bicep/bicepconfig.json
+~$MLOPS.docx
+~WRL0005.tmp
