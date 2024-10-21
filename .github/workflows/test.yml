@@ -20,7 +20,7 @@ jobs:
 
       - name: Read environment variables from YAML
         id: read-yaml
-        run: python ./mlops/templates/github-workflows/parse_yaml.py config-infra-dev.yml
+        run: python ./github/workflows/scripts/parse_yaml.py config-infra-dev.yml
 
       - name: Use environment variables in another job
         run: echo "The VM image is ${{ steps.read-yaml.outputs.ap_vm_image }} located in ${{ steps.read-yaml.outputs.location }} with postfix ${{ steps.read-yaml.outputs.postfix }}"
