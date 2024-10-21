@@ -32,7 +32,7 @@ jobs:
   # Step 1: Register environments
   register-environment:
     needs: parse-yaml
-    uses: ./github/workflows/templates/register-environment.yml@dev
+    uses: ./github/workflows/register-environment.yml@dev
     with:
       resource_group: ${{ needs.parse-yaml.outputs.resource_group }}
       workspace_name: ${{ needs.parse-yaml.outputs.aml_workspace }}
@@ -44,7 +44,7 @@ jobs:
   #Step 2: Register the dataset
   register-dataset:
     needs: parse-yaml
-    uses: ./github/workflows/templates/register-dataset.yml@dev
+    uses: ./github/workflows/register-dataset.yml@dev
     with:
       resource_group: ${{ needs.parse-yaml.outputs.resource_group }}
       workspace_name: ${{ needs.parse-yaml.outputs.aml_workspace }}
@@ -56,7 +56,7 @@ jobs:
   #Step 3: Create a compute instance
   create-compute:
     needs: parse-yaml
-    uses: ./github/workflows/templates/create-compute.yml@dev
+    uses: ./github/workflows/create-compute.yml@dev
     with:
       cluster_name: cpu-cluster
       size: Standard_DS3_v2
@@ -71,7 +71,7 @@ jobs:
   #Step 4: Train the model
   run-model-training-pipeline:
     needs: [parse-yaml, register-environment, register-dataset, create-compute]
-    uses: ./github/workflows/templates/run-pipeline.yml@dev
+    uses: ./github/workflows/run-pipeline.yml@dev
     with:
       resource_group: ${{ needs.parse-yaml.outputs.resource_group }}
       workspace_name: ${{ needs.parse-yaml.outputs.aml_workspace }}
