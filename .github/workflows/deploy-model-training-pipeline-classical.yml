@@ -1,60 +1,62 @@
-name: deploy-model-training-pipeline
+name: 1. Train Model
 
 on:
-  workflow_dispatch: # Enables manual triggering
+  workflow_dispatch:
+
 jobs:
-  set-env-branch:
+  parse-yaml:
     runs-on: ubuntu-latest
     outputs:
-      config-file: ${{ steps.set-output-defaults.outputs.config-file }}
+      location: ${{ steps.read-yaml.outputs.location }}
+      resource_group: ${{ steps.read-yaml.outputs.resource_group }}
+      postfix: ${{ steps.read-yaml.outputs.postfix }}
+      aml_workspace: ${{ steps.read-yaml.outputs.aml_workspace }}
     steps:
-      - id: set-prod-branch
-        name: set-prod-branch
-        if: ${{ github.ref == 'refs/heads/main'}}
-        run: echo "config_env=config-infra-prod.yml" >> $GITHUB_ENV;
-      - id: set-dev-branch
-        name: setdevbranch
-        if: ${{ github.ref == 'refs/heads/dev'}}
-        run: echo "config_env=config-infra-dev.yml" >> $GITHUB_ENV;
-      - id: set-output-defaults
-        name: set-output-defaults
-        run: |
-          echo "config-file=$config_env" >> $GITHUB_OUTPUT;
-  
-  # get the infra config file. If it is 'dev' branch, then this job is going to read config-infra-dev.yml
-  get-config:
-    needs: set-env-branch
-    uses: ./mlops/templates/github-workflows/read-yaml.yml@dev
-    with:
-      file_name: ${{ needs.set-env-branch.outputs.config-file}}
-  
-  #Step 1: Register the enviornment
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Read environment variables from the YAML config file (dev or prod)
+        id: read-yaml
+        run: python ./mlops/templates/github-workflows/parse_yaml.py config-infra-dev.yml
+
+      - name: Use environment variables in another job
+        run: echo "The VM image is ${{ steps.read-yaml.outputs.ap_vm_image }} located in ${{ steps.read-yaml.outputs.location }} with postfix ${{ steps.read-yaml.outputs.postfix }}"
+
+  # Step 1: Register environments
   register-environment:
-    needs: get-config
+    needs: parse-yaml
     uses: ./mlops/templates/github-workflows/register-environment.yml@dev
     with:
-      resource_group: ${{ needs.get-config.outputs.resource_group }}
-      workspace_name: ${{ needs.get-config.outputs.aml_workspace }}
-      environment_file: mlops/azureml/train/train-env.yml
+      resource_group: ${{ needs.parse-yaml.outputs.resource_group }}
+      workspace_name: ${{ needs.parse-yaml.outputs.aml_workspace }}
+      environment_file: ./mlops/azureml/train/train-env.yml
       conda_file: data-science/environment/train-conda.yml
     secrets:
       creds: ${{secrets.AZURE_CREDENTIALS}}
   
   #Step 2: Register the dataset
   register-dataset:
-    needs: get-config
+    needs: parse-yaml
     uses: ./mlops/templates/github-workflows/register-dataset.yml@dev
     with:
-      resource_group: ${{ needs.get-config.outputs.resource_group }}
-      workspace_name: ${{ needs.get-config.outputs.aml_workspace }}
+      resource_group: ${{ needs.parse-yaml.outputs.resource_group }}
+      workspace_name: ${{ needs.parse-yaml.outputs.aml_workspace }}
       name: taxi-data
-      data_file: mlops/azureml/train/data.yml
+      data_file: ./mlops/azureml/train/data.yml
     secrets:
       creds: ${{secrets.AZURE_CREDENTIALS}}
   
   #Step 3: Create a compute instance
   create-compute:
-    needs: [get-config]
+    needs: parse-yaml
     uses: ./mlops/templates/github-workflows/create-compute.yml@dev
     with:
       cluster_name: cpu-cluster
@@ -62,19 +64,19 @@ jobs:
       min_instances: 0
       max_instances: 4
       cluster_tier: low_priority
-      resource_group: ${{ needs.get-config.outputs.resource_group }}
-      workspace_name: ${{ needs.get-config.outputs.aml_workspace }}
+      resource_group: ${{ needs.parse-yaml.outputs.resource_group }}
+      workspace_name: ${{ needs.parse-yaml.outputs.aml_workspace }}
     secrets:
       creds: ${{secrets.AZURE_CREDENTIALS}}
 
   #Step 4: Train the model
   run-model-training-pipeline:
-    needs: [get-config, register-environment, register-dataset, create-compute]
+    needs: [parse-yaml, register-environment, register-dataset, create-compute]
     uses: ./mlops/templates/github-workflows/run-pipeline.yml@dev
     with:
-      resource_group: ${{ needs.get-config.outputs.resource_group }}
-      workspace_name: ${{ needs.get-config.outputs.aml_workspace }}
-      parameters-file: mlops/azureml/train/pipeline.yml
+      resource_group: ${{ needs.parse-yaml.outputs.resource_group }}
+      workspace_name: ${{ needs.parse-yaml.outputs.aml_workspace }}
+      parameters-file: ./mlops/azureml/train/pipeline.yml
       job-name: test
     secrets:
       creds: ${{secrets.AZURE_CREDENTIALS}}
