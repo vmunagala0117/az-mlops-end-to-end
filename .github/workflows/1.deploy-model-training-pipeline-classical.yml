@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  parse-yaml:
+  train-model-deploy:
     runs-on: ubuntu-latest
     outputs:
       location: ${{ steps.read-yaml.outputs.location }}
@@ -29,53 +29,70 @@ jobs:
       - name: Use environment variables in another job
         run: echo "The VM image is ${{ steps.read-yaml.outputs.ap_vm_image }} located in ${{ steps.read-yaml.outputs.location }} with postfix ${{ steps.read-yaml.outputs.postfix }}"
 
-  # Step 1: Register environments
-  register-environment:
-    needs: parse-yaml
-    uses: register-environment.yml@dev
-    with:
-      resource_group: ${{ needs.parse-yaml.outputs.resource_group }}
-      workspace_name: ${{ needs.parse-yaml.outputs.aml_workspace }}
-      environment_file: ./mlops/azureml/train/train-env.yml
-      conda_file: data-science/environment/train-conda.yml
-    secrets:
-      creds: ${{secrets.AZURE_CREDENTIALS}}
-  
-  #Step 2: Register the dataset
-  register-dataset:
-    needs: parse-yaml
-    uses: register-dataset.yml@dev
-    with:
-      resource_group: ${{ needs.parse-yaml.outputs.resource_group }}
-      workspace_name: ${{ needs.parse-yaml.outputs.aml_workspace }}
-      name: taxi-data
-      data_file: ./mlops/azureml/train/data.yml
-    secrets:
-      creds: ${{secrets.AZURE_CREDENTIALS}}
-  
-  #Step 3: Create a compute instance
-  create-compute:
-    needs: parse-yaml
-    uses: create-compute.yml@dev
-    with:
-      cluster_name: cpu-cluster
-      size: Standard_DS3_v2
-      min_instances: 0
-      max_instances: 4
-      cluster_tier: low_priority
-      resource_group: ${{ needs.parse-yaml.outputs.resource_group }}
-      workspace_name: ${{ needs.parse-yaml.outputs.aml_workspace }}
-    secrets:
-      creds: ${{secrets.AZURE_CREDENTIALS}}
+      #login using AZ CLI
+      - name: "Az CLI login"
+        uses: azure/login@v1
+        with:
+          creds: ${{secrets.AZURE_CREDENTIALS}}
+          enable-AzPSSession: true
 
-  #Step 4: Train the model
-  run-model-training-pipeline:
-    needs: [parse-yaml, register-environment, register-dataset, create-compute]
-    uses: run-pipeline.yml@dev
-    with:
-      resource_group: ${{ needs.parse-yaml.outputs.resource_group }}
-      workspace_name: ${{ needs.parse-yaml.outputs.aml_workspace }}
-      parameters-file: ./mlops/azureml/train/pipeline.yml
-      job-name: test
-    secrets:
-      creds: ${{secrets.AZURE_CREDENTIALS}}
+      #install AZ ML CLI libraries
+      - name: install-extension
+        run: az extension add -n ml -y
+      - name: update-extension
+        run: az extension update -n ml
+      - name: list-extentions
+        run: az extension list
+
+      # Step 1: Register training environment
+      - name: create-environment-from-conda-file
+        run: |
+          az ml environment create --file ./mlops/azureml/train/train-env.yml --resource-group ${{ steps.read-yaml.outputs.resource_group }} \
+                                --workspace-name  ${{ steps.read-yaml.outputs.aml_workspace }} --conda-file ./data-science/environment/train-conda.yml
+      
+      # Step 2: Register dataset
+      - name: register-dataset
+        run: |
+          az ml job create --file ./mlops/azureml/train/data.yml --resource-group ${{ steps.read-yaml.outputs.resource_group }} \
+          --workspace-name ${{ steps.read-yaml.outputs.aml_workspace }} --name taxi-data
+      
+      # Step 3: Create a compute instance
+      - name: create-compute-instance
+        run: |
+          az ml compute create --name cpu-cluster \
+                                  --type AmlCompute \
+                                  --tier low_priority \
+                                  --size Standard_DS3_v2 \
+                                  --min-instances 0 \
+                                  --max-instances 4 \
+                                  --resource-group  ${{ steps.read-yaml.outputs.resource_group }} \
+                                  --workspace-name ${{ steps.read-yaml.outputs.aml_workspace }}
+
+      # Step 3: Train the model
+      - name: train-model
+        run: |
+          run_id=$(az ml job create --file ./mlops/azureml/train/pipeline.yml --resource-group ${{ steps.read-yaml.outputs.resource_group }} --workspace-name ${{ steps.read-yaml.outputs.aml_workspace }} --query name -o tsv)
+          if [[ -z "$run_id" ]]
+          then
+            echo "Job creation failed"
+            exit 3
+          fi
+          az ml job show -n $run_id --resource-group ${{ steps.read-yaml.outputs.resource_group }} --workspace-name ${{ steps.read-yaml.outputs.aml_workspace }} --web 
+          status=$(az ml job show -n $run_id --resource-group ${{ steps.read-yaml.outputs.resource_group }} --workspace-name ${{ steps.read-yaml.outputs.aml_workspace }} --query status -o tsv)
+          if [[ -z "$status" ]]
+          then
+            echo "Status query failed"
+            exit 4
+          fi
+          running=("NotStarted" "Queued" "Starting" "Preparing" "Running" "Finalizing" "CancelRequested")
+          while [[ ${running[*]} =~ $status ]]
+          do
+            sleep 15 
+            status=$(az ml job show -n $run_id --resource-group ${{ steps.read-yaml.outputs.resource_group }} --workspace-name ${{ steps.read-yaml.outputs.aml_workspace }} --query status -o tsv)
+            echo $status
+          done
+          if [[ "$status" != "Completed" ]]  
+          then
+            echo "Training Job failed or canceled"
+            exit 3
+          fi
