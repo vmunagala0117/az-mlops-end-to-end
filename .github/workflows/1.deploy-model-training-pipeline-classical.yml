@@ -47,13 +47,13 @@ jobs:
       # Step 1: Register training environment
       - name: create-environment-from-conda-file
         run: |
-          az ml environment create --file mlops/azureml/train/train-env.yml --resource-group ${{ steps.read-yaml.outputs.resource_group }} \
-                                --workspace-name  ${{ steps.read-yaml.outputs.aml_workspace }} --conda-file data-science/environment/train-conda.yml
+          az ml environment create --file ${{ github.workspace }}/mlops/azureml/train/train-env.yml --resource-group ${{ steps.read-yaml.outputs.resource_group }} \
+          --workspace-name  ${{ steps.read-yaml.outputs.aml_workspace }} --conda-file ${{ github.workspace }}/data-science/environment/train-conda.yml
       
       # Step 2: Register dataset
       - name: register-dataset
         run: |
-          az ml job create --file mlops/azureml/train/data.yml --resource-group ${{ steps.read-yaml.outputs.resource_group }} \
+          az ml job create --file ${{ github.workspace }}/mlops/azureml/train/data.yml --resource-group ${{ steps.read-yaml.outputs.resource_group }} \
           --workspace-name ${{ steps.read-yaml.outputs.aml_workspace }} --name taxi-data
       
       # Step 3: Create a compute instance
@@ -71,7 +71,7 @@ jobs:
       # Step 3: Train the model
       - name: train-model
         run: |
-          run_id=$(az ml job create --file mlops/azureml/train/pipeline.yml --resource-group ${{ steps.read-yaml.outputs.resource_group }} --workspace-name ${{ steps.read-yaml.outputs.aml_workspace }} --query name -o tsv)
+          run_id=$(az ml job create --file ${{ github.workspace }}/mlops/azureml/train/pipeline.yml --resource-group ${{ steps.read-yaml.outputs.resource_group }} --workspace-name ${{ steps.read-yaml.outputs.aml_workspace }} --query name -o tsv)
           if [[ -z "$run_id" ]]
           then
             echo "Job creation failed"
