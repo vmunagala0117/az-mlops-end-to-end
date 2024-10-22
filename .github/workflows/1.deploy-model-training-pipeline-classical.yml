@@ -53,7 +53,7 @@ jobs:
       # Step 2: Register dataset
       - name: register-dataset
         run: |
-          az ml job create --file ${{ github.workspace }}/mlops/azureml/train/data.yml --resource-group ${{ steps.read-yaml.outputs.resource_group }} \
+          az ml data create --file ${{ github.workspace }}/mlops/azureml/train/data.yml --resource-group ${{ steps.read-yaml.outputs.resource_group }} \
           --workspace-name ${{ steps.read-yaml.outputs.aml_workspace }} --name taxi-data
       
       # Step 3: Create a compute instance
