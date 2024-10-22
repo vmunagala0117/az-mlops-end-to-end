@@ -1,0 +1,95 @@
+name: "Step 3: Deploy Model in Production"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  train-model-deploy:
+    runs-on: ubuntu-latest
+    outputs:
+      location: ${{ steps.read-prod-yaml.outputs.location }}
+      resource_group: ${{ steps.read-prod-yaml.outputs.resource_group }}
+      aml_workspace: ${{ steps.read-prod-yaml.outputs.aml_workspace }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Read environment variables from the DEV YAML config file
+        id: read-dev-yaml
+        run: python mlops/templates/github-workflows/parse_yaml.py config-infra-dev.yml
+
+      - name: Read environment variables from the PROD YAML config file
+        id: read-prod-yaml
+        run: python mlops/templates/github-workflows/parse_yaml.py config-infra-prod.yml
+
+      - name: Test variables
+        run: echo "The Prod AML is ${{ steps.read-prod-yaml.outputs.aml_workspace }} and Dev AML is ${{ steps.read-dev-yaml.outputs.aml_workspace }}"
+
+      #login using AZ CLI
+      - name: "Az CLI login"
+        uses: azure/login@v2
+        with:
+          creds: ${{secrets.AZURE_CREDENTIALS}} #ensure that this service principal has credentials to access the dev environment
+          enable-AzPSSession: true
+
+      #install AZ ML CLI libraries
+      - name: install-extension
+        run: az extension add -n ml -y
+      - name: update-extension
+        run: az extension update -n ml
+      - name: list-extentions
+        run: az extension list
+
+      # Step 1: Register the environment in prod
+      - name: prod-create-environment-from-conda-file
+        run: |
+            az ml environment create --file ${{ github.workspace }}/mlops/azureml/train/train-env.yml --resource-group ${{ steps.read-prod-yaml.outputs.resource_group }} \
+            --workspace-name  ${{ steps.read-prod-yaml.outputs.aml_workspace }} --conda-file ${{ github.workspace }}/data-science/environment/train-conda.yml
+      
+      # Step 2: Register dataset
+      - name: prod-register-dataset
+        run: |
+            az ml data create --file ${{ github.workspace }}/mlops/azureml/train/data.yml --resource-group ${{ steps.read-prod-yaml.outputs.resource_group }} \
+            --workspace-name ${{ steps.read-prod-yaml.outputs.aml_workspace }} --name taxi-data
+      
+      # Step 3: Create a compute instance
+      - name: prod-create-compute-instance
+        run: |        
+            az ml compute create --name cpu-cluster \
+                                    --type AmlCompute \
+                                    --tier low_priority \
+                                    --size Standard_DS3_v2 \
+                                    --min-instances 0 \
+                                    --max-instances 4 \
+                                    --resource-group  ${{ steps.read-prod-yaml.outputs.resource_group }} \
+                                    --workspace-name ${{ steps.read-prod-yaml.outputs.aml_workspace }}
+
+      # Create directory for model artifacts
+      - name: Create directory for model artifacts
+        run: mkdir -p ${{ github.workspace }}/model_artifacts
+
+      # Step 4: Export model artifacts from dev
+      - name: dev-export-model-artifact
+        run: |            
+            # get the MLFLOW TRACKING URI
+            mlflow_tracking_uri=$(az ml workspace show --resource-group ${{ steps.read-dev-yaml.outputs.resource_group }} --workspace-name ${{ steps.read-dev-yaml.outputs.aml_workspace }} --query mlflow_tracking_uri --output tsv)
+            
+            # get the production version of the mlflow model
+            version=$(python mlops/templates/github-workflows/query_model.py \
+                --workspace_uri "$mlflow_tracking_uri" \
+                ---model_name "taxi-model")
+
+            #export the artifacts
+            python mlops/templates/github-workflows/download_model_artifacts \
+                --workspace_uri "$mlflow_tracking_uri" \
+                ---model_name "taxi-model" \
+                --model_version "$version" \
+                --download_path  "${{ github.workspace }}/model_artifacts"

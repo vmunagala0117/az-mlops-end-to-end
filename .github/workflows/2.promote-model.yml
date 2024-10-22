@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  train-model-deploy:
+  promote-model:
     runs-on: ubuntu-latest
     outputs:
       location: ${{ steps.read-yaml.outputs.location }}
