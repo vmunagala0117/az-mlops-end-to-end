@@ -2,7 +2,7 @@
 $schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
 type: command
 code: ../../../data-science/src  # The directory containing your script
-command: >
+command: >-
   python promote.py --model_name ${{inputs.model_name}} --alias ${{inputs.alias}}
 environment: azureml:taxi-train-env@latest
 compute: azureml:cpu-cluster  # Specify your compute target
@@ -15,6 +15,3 @@ inputs:
   alias:
     type: string
     default: production_model
-  version: 
-    type: string
-    default: 1
