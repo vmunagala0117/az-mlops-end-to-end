@@ -47,7 +47,7 @@ jobs:
       # Step 1: Promote the model to Production
       - name: promote-model
         run: |
-          run_id=$(az ml job create --file ${{ github.workspace }}/mlops/azureml/train/promote.yml --set inputs.model_name="taxi-model" inputs.alias="production_model" --resource-group ${{ steps.read-yaml.outputs.resource_group }} --workspace-name ${{ steps.read-yaml.outputs.aml_workspace }} --debug --query name -o tsv)
+          run_id=$(az ml job create --file ${{ github.workspace }}/mlops/azureml/train/promote.yml --set inputs.model_name="taxi-model" inputs.alias="Production" --resource-group ${{ steps.read-yaml.outputs.resource_group }} --workspace-name ${{ steps.read-yaml.outputs.aml_workspace }} --query name -o tsv)
           if [[ -z "$run_id" ]]
           then
             echo "Job creation failed"

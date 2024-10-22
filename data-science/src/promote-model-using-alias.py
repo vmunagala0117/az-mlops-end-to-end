@@ -40,15 +40,15 @@ def get_latest_model_version(model_name):
         return None
 
 def promote_model(model_name, version, alias):
-    '''Promotes the model to Staging or Production'''
+    '''Promotes the model by assigning an alias'''
 
     try:
-        # Set the alias for the stage
+        # Set the alias for the model version
         client = mlflow.tracking.MlflowClient()
-        client.transition_model_version_stage(            
+        client.set_registered_model_alias(
             name=model_name,
-            version=version,  # Version of the model you want to promote
-            stage=alias,  # Target stage: "Staging", "Production", or "Archived"
+            alias=alias,
+            version=version
         )
 
         print(f"Model '{model_name}' version '{version}' assigned alias '{alias}' successfully.")
