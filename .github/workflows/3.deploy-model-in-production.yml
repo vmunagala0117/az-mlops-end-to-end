@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  train-model-deploy:
+  register-model-production:
     runs-on: ubuntu-latest
     outputs:
       location: ${{ steps.read-prod-yaml.outputs.location }}
@@ -80,7 +80,7 @@ jobs:
       - name: dev-export-model-artifact
         run: |            
             # get the MLFLOW TRACKING URI
-            mlflow_tracking_uri=$(az ml workspace show --resource-group ${{ steps.read-dev-yaml.outputs.resource_group }} --workspace-name ${{ steps.read-dev-yaml.outputs.aml_workspace }} --query mlflow_tracking_uri --output tsv)
+            mlflow_tracking_uri=$(az ml workspace show --resource-group ${{ steps.read-dev-yaml.outputs.resource_group }} --name ${{ steps.read-dev-yaml.outputs.aml_workspace }} --query mlflow_tracking_uri --output tsv)
             
             # get the production version of the mlflow model
             version=$(python mlops/templates/github-workflows/query_model.py \
