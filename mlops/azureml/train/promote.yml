@@ -1,0 +1,20 @@
+# promote-job.yml
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+code: ../../../data-science/src  # The directory containing your script
+command: >
+  python promote.py --model_name ${{inputs.model_name}} --alias ${{inputs.alias}}
+environment: azureml:taxi-train-env@latest
+compute: azureml:cpu-cluster  # Specify your compute target
+display_name: promote-model-job
+description: Promote the latest model to staging or production using an alias
+inputs:
+  model_name:
+    type: string
+    default: "taxi-model"
+  alias:
+    type: string
+    default: production_model
+  version: 
+    type: string
+    default: 1
