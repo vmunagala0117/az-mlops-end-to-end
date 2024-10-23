@@ -19,6 +19,12 @@ jobs:
         with:
           python-version: '3.x'
     
+      - name: Set AZURE_CREDENTIALS environment variable
+        run: |
+            echo "Setting AZURE_CREDENTIALS"
+            echo "${{ secrets.AZURE_CREDENTIALS }}" | jq '.' > azure_credentials.json
+            cat azure_credentials.json
+    
       #install AZ ML CLI libraries
       - name: install-extension
         run: az extension add -n ml -y
@@ -55,13 +61,7 @@ jobs:
 
       # Create directory for model artifacts
       - name: Create directory for model artifacts
-        run: mkdir -p ${{ github.workspace }}/model_artifacts
-
-      - name: Set AZURE_CREDENTIALS environment variable
-        run: |
-            echo "Setting AZURE_CREDENTIALS"
-            echo "${{ secrets.AZURE_CREDENTIALS }}" | jq '.' > azure_credentials.json
-            cat azure_credentials.json
+        run: mkdir -p ${{ github.workspace }}/model_artifacts      
       
       # Step 4: Export model artifacts from dev
       - name: dev-export-model-artifact
