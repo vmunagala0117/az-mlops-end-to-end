@@ -3,11 +3,10 @@ import json
 import os
 from azure.identity import ClientSecretCredential
 from azure.ai.ml import MLClient
-from mlflow.tracking import MlflowClient
 
 def parse_args():
     '''Parse input arguments'''
-    parser = argparse.ArgumentParser(description="Download the MLflow model artifacts for a specific version.")
+    parser = argparse.ArgumentParser(description="Download the Azure ML model artifacts for a specific version.")
     parser.add_argument("--model_name", type=str, required=True, help="Name of the model")
     parser.add_argument("--model_version", type=str, required=True, help="Version of the model to download")
     parser.add_argument("--resource_group", type=str, required=True, help="Resource group for Azure ML workspace")
@@ -30,12 +29,13 @@ def get_azure_credential():
 
 def download_model_artifacts(client, model_name, model_version, download_path):
     '''Download the artifacts of the specified model version'''
-    model_uri = f"models:/{model_name}/{model_version}"
-    
-    # Download the artifacts
     try:
-        local_path = client.download_artifacts(name=model_name, version=model_version, download_path=download_path)
-        print(f"Model artifacts downloaded to: {local_path}")
+        # Get the model by name and version
+        model = client.models.get(name=model_name, version=model_version)
+
+        # Download the model artifacts to the specified path
+        client.models.download(name=model_name, version=model_version, download_path=download_path)
+        print(f"Model artifacts for '{model_name}' version '{model_version}' downloaded to: {download_path}")
     except Exception as e:
         print(f"Error downloading model artifacts: {e}")
         exit(1)
@@ -52,12 +52,7 @@ def main(args):
         workspace_name=args.workspace_name
     )
 
-    # Retrieve and set the MLflow tracking URI based on the workspace information
-    tracking_uri = ml_client.workspaces.get(args.workspace_name).mlflow_tracking_uri
-    os.environ["MLFLOW_TRACKING_URI"] = tracking_uri
-    print(f"MLflow tracking URI set to: {tracking_uri}")
-
-    # Download the model artifacts
+    # Download the model artifacts using Azure ML SDK
     download_model_artifacts(ml_client, args.model_name, args.model_version, args.download_path)
 
 if __name__ == "__main__":
