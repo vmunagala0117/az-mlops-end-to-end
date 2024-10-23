@@ -17,11 +17,12 @@ def parse_args():
 
 def get_azure_credential():
     '''Retrieve Azure credentials from the environment variable'''
-    azure_credentials = json.loads(os.getenv("AZURE_CREDENTIALS"))
-    tenant_id = azure_credentials["tenantId"]
-    client_id = azure_credentials["clientId"]
-    client_secret = azure_credentials["clientSecret"]
-    subscription_id = azure_credentials["subscriptionId"]
+    azure_credentials = os.environ.get('AZURE_CREDENTIALS')
+    creds = json.loads(azure_credentials)
+    tenant_id = creds["tenantId"]
+    client_id = creds["clientId"]
+    client_secret = creds["clientSecret"]
+    subscription_id = creds.get("subscriptionId", None)
 
     # Set up the ClientSecretCredential for Azure authentication
     credential = ClientSecretCredential(tenant_id=tenant_id, client_id=client_id, client_secret=client_secret)
