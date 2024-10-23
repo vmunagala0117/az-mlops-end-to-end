@@ -8,7 +8,6 @@ from mlflow.tracking import MlflowClient
 def parse_args():
     '''Parse input arguments'''
     parser = argparse.ArgumentParser(description="Query for the Production model version.")
-    parser.add_argument("--workspace_uri", type=str, required=True, help="MLFLOW tracking URI")
     parser.add_argument("--model_name", type=str, required=True, help="Name of the model to query")
     parser.add_argument("--resource_group", type=str, required=True, help="Resource group for Azure ML workspace")
     parser.add_argument("--workspace_name", type=str, required=True, help="Azure ML workspace name")

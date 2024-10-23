@@ -90,8 +90,9 @@ jobs:
             export AZURE_CREDENTIALS="${{ secrets.AZURE_CREDENTIALS }}"
             # get the production version of the mlflow model
             version=$(python mlops/templates/github-workflows/query_model.py \
-                --workspace_uri "$mlflow_tracking_uri" \
-                ---model_name "taxi-model")
+                --resource_group "${{ steps.read-dev-yaml.outputs.resource_group }}" \
+                --workspace_name "${{ steps.read-dev-yaml.outputs.aml_workspace }}" \
+                ---model_name "taxi-model" )
 
             #download the artifacts
             python mlops/templates/github-workflows/download_model_artifacts.py \
