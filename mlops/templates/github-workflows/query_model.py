@@ -10,6 +10,7 @@ def parse_args():
     parser.add_argument("--model_name", type=str, required=True, help="Name of the model to query")
     parser.add_argument("--resource_group", type=str, required=True, help="Resource group for Azure ML workspace")
     parser.add_argument("--workspace_name", type=str, required=True, help="Azure ML workspace name")
+    parser.add_argument("--download_path", type=str, required=True, help="Local path to download the model artifacts")
     return parser.parse_args()
 
 def get_azure_credential():
@@ -26,6 +27,13 @@ def get_azure_credential():
     credential = ClientSecretCredential(tenant_id=tenant_id, client_id=client_id, client_secret=client_secret)
     return credential, subscription_id
 
+def download_model_artifacts(client, model_name, model_version, download_path):
+    '''Download the artifacts of the specified model version'''
+    
+    client.models.download(name=model_name, version=model_version, download_path=download_path)
+    
+    print(f"Model artifacts for '{model_name}' version '{model_version}' downloaded to: {download_path}")
+        
 def get_production_model_version(client, model_name):
     '''Fetch the model version marked as Production'''
     versions = client.models.list(name=model_name)
@@ -55,7 +63,8 @@ def main(args):
         print(f"Production model version: {version}")
     else:
         print("No production model version found.")
-    return version
+    
+    download_model_artifacts(ml_client, args.model_name, version, args.download_path)
 
 if __name__ == "__main__":
     args = parse_args()
