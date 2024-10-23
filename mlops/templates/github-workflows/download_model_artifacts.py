@@ -32,10 +32,13 @@ def download_model_artifacts(client, model_name, model_version, download_path):
     try:
         # Get the model by name and version
         model = client.models.get(name=model_name, version=model_version)
-
+        
         # Download the model artifacts to the specified path
-        client.models.download(name=model_name, version=model_version, download_path=download_path)
-        print(f"Model artifacts for '{model_name}' version '{model_version}' downloaded to: {download_path}")
+        model_uri = model.uri
+        print(f"Model URI: {model.uri}")
+        local_path = client.models.download(model_uri=model_uri, download_path=download_path)
+        
+        print(f"Model artifacts for '{model_name}' version '{model_version}' downloaded to: {local_path}")
     except Exception as e:
         print(f"Error downloading model artifacts: {e}")
         exit(1)
