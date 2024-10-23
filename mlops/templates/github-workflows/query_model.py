@@ -3,7 +3,6 @@ import json
 import os
 from azure.identity import ClientSecretCredential
 from azure.ai.ml import MLClient
-from mlflow.tracking import MlflowClient
 
 def parse_args():
     '''Parse input arguments'''
@@ -16,7 +15,6 @@ def parse_args():
 def get_azure_credential():
     '''Retrieve Azure credentials from the environment variable'''
     print("printing az creds...")
-    # Access credentials from environment variable
     azure_credentials = os.environ.get('AZURE_CREDENTIALS')
     creds = json.loads(azure_credentials)
     tenant_id = creds["tenantId"]
@@ -28,16 +26,11 @@ def get_azure_credential():
     credential = ClientSecretCredential(tenant_id=tenant_id, client_id=client_id, client_secret=client_secret)
     return credential, subscription_id
 
-def get_production_model_version(model_name):
+def get_production_model_version(client, model_name):
     '''Fetch the model version marked as Production'''
-    client = MlflowClient()
-
-    # Fetch all versions of the specified model
-    versions = client.search_model_versions(f"name='{model_name}'")
-
-    # Find and return the version marked as Production
+    versions = client.models.list(name=model_name)
     for version in versions:
-        if version.current_stage == "Production":
+        if version.stage == "Production":
             print(f"Model '{model_name}' version '{version.version}' is in Production.")
             return version.version
     
@@ -45,8 +38,10 @@ def get_production_model_version(model_name):
     return None
 
 def main(args):
-    # Set the Azure ML tracking URI using the Azure ML SDK
+    # Get credentials and subscription ID
     credential, subscription_id = get_azure_credential()
+    
+    # Set up the Azure ML client
     ml_client = MLClient(
         credential,
         subscription_id=subscription_id,
@@ -54,13 +49,8 @@ def main(args):
         workspace_name=args.workspace_name
     )
 
-    # Retrieve and set the MLFLOW_TRACKING_URI based on the workspace information
-    tracking_uri = ml_client.workspaces.get(args.workspace_name).mlflow_tracking_uri
-    os.environ["MLFLOW_TRACKING_URI"] = tracking_uri
-    print(f"MLflow tracking URI set to: {tracking_uri}")
-
-    # Query for the production model version
-    version = get_production_model_version(args.model_name)
+    # Query for the production model version using the Azure ML SDK
+    version = get_production_model_version(ml_client, args.model_name)
     if version:
         print(f"Production model version: {version}")
     else:

@@ -32,6 +32,8 @@ jobs:
         run: |
             pip install pyyaml
             pip install mlflow
+            pip install azureml
+            pip install azureml-mlflow
             pip install azure-ai-ml
             pip install azure-identity
 
