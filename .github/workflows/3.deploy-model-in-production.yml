@@ -56,12 +56,12 @@ jobs:
       # Create directory for model artifacts
       - name: Create directory for model artifacts
         run: mkdir -p ${{ github.workspace }}/model_artifacts
-        
+
       - name: Set AZURE_CREDENTIALS environment variable
         run: |
             echo "Setting AZURE_CREDENTIALS"
             echo "${{ secrets.AZURE_CREDENTIALS }}" | jq '.' > azure_credentials.json
-            export AZURE_CREDENTIALS=$(cat azure_credentials.json)
+            cat azure_credentials.json
       
       # Step 4: Export model artifacts from dev
       - name: dev-export-model-artifact
