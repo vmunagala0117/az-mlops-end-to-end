@@ -31,7 +31,7 @@ def get_production_model_version(client, model_name):
     versions = client.models.list(name=model_name)
     for version in versions:
         if version.stage == "Production":
-            print(f"Model '{model_name}' version '{version.version}' is in Production.")
+            print(f"Model '{model_name}' version '{version.version}' is in '{version.stage}'.")
             return version.version
     
     print(f"No version of model '{model_name}' is currently in Production.")
@@ -55,6 +55,7 @@ def main(args):
         print(f"Production model version: {version}")
     else:
         print("No production model version found.")
+    return version
 
 if __name__ == "__main__":
     args = parse_args()
