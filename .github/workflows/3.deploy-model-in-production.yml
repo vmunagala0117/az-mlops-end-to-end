@@ -18,9 +18,22 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.x'
-
-      - name: Install PyYAML
-        run: pip install pyyaml
+    
+      #install AZ ML CLI libraries
+      - name: install-extension
+        run: az extension add -n ml -y
+      - name: update-extension
+        run: az extension update -n ml
+      - name: list-extentions
+        run: az extension list
+    
+      #install Python libraries
+      - name: Install Python Dependencies
+        run: |
+            pip install pyyaml
+            pip install mlflow
+            pip install azure-ai-ml
+            pip install azure-identity
 
       - name: Read environment variables from the DEV YAML config file
         id: read-dev-yaml
@@ -38,15 +51,7 @@ jobs:
         uses: azure/login@v2
         with:
           creds: ${{secrets.AZURE_CREDENTIALS}} #ensure that this service principal has credentials to access the dev environment
-          enable-AzPSSession: true
-
-      #install AZ ML CLI libraries
-      - name: install-extension
-        run: az extension add -n ml -y
-      - name: update-extension
-        run: az extension update -n ml
-      - name: list-extentions
-        run: az extension list
+          enable-AzPSSession: true      
 
       # Step 1: Register the environment in prod
       - name: prod-create-environment-from-conda-file
@@ -80,16 +85,18 @@ jobs:
       - name: dev-export-model-artifact
         run: |            
             # get the MLFLOW TRACKING URI
-            mlflow_tracking_uri=$(az ml workspace show --resource-group ${{ steps.read-dev-yaml.outputs.resource_group }} --name ${{ steps.read-dev-yaml.outputs.aml_workspace }} --query mlflow_tracking_uri --output tsv)
+            #mlflow_tracking_uri=$(az ml workspace show --resource-group ${{ steps.read-dev-yaml.outputs.resource_group }} --name ${{ steps.read-dev-yaml.outputs.aml_workspace }} --query mlflow_tracking_uri --output tsv)
             
+            export AZURE_CREDENTIALS="${{ secrets.AZURE_CREDENTIALS }}"
             # get the production version of the mlflow model
             version=$(python mlops/templates/github-workflows/query_model.py \
                 --workspace_uri "$mlflow_tracking_uri" \
                 ---model_name "taxi-model")
 
-            #export the artifacts
-            python mlops/templates/github-workflows/download_model_artifacts \
-                --workspace_uri "$mlflow_tracking_uri" \
-                ---model_name "taxi-model" \
+            #download the artifacts
+            python mlops/templates/github-workflows/download_model_artifacts.py \
+                --resource_group "${{ steps.read-dev-yaml.outputs.resource_group }}" \
+                --workspace_name "${{ steps.read-dev-yaml.outputs.aml_workspace }}" \
+                --model_name "taxi-model" \
                 --model_version "$version" \
-                --download_path  "${{ github.workspace }}/model_artifacts"
+                --download_path "${{ github.workspace }}/model_artifacts"
