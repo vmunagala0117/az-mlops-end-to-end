@@ -53,6 +53,31 @@ jobs:
           creds: ${{secrets.AZURE_CREDENTIALS}} #ensure that this service principal has credentials to access the dev environment
           enable-AzPSSession: true      
 
+      # Create directory for model artifacts
+      - name: Create directory for model artifacts
+        run: mkdir -p ${{ github.workspace }}/model_artifacts
+      
+      # Step 4: Export model artifacts from dev
+      - name: dev-export-model-artifact
+        run: |            
+            # get the MLFLOW TRACKING URI
+            #mlflow_tracking_uri=$(az ml workspace show --resource-group ${{ steps.read-dev-yaml.outputs.resource_group }} --name ${{ steps.read-dev-yaml.outputs.aml_workspace }} --query mlflow_tracking_uri --output tsv)
+            
+            export AZURE_CREDENTIALS="${{ secrets.AZURE_CREDENTIALS }}"
+            # get the production version of the mlflow model
+            version=$(python mlops/templates/github-workflows/query_model.py \
+                --resource_group "${{ steps.read-dev-yaml.outputs.resource_group }}" \
+                --workspace_name "${{ steps.read-dev-yaml.outputs.aml_workspace }}" \
+                ---model_name "taxi-model")
+
+            #download the artifacts
+            python mlops/templates/github-workflows/download_model_artifacts.py \
+                --resource_group "${{ steps.read-dev-yaml.outputs.resource_group }}" \
+                --workspace_name "${{ steps.read-dev-yaml.outputs.aml_workspace }}" \
+                --model_name "taxi-model" \
+                --model_version "$version" \
+                --download_path "${{ github.workspace }}/model_artifacts"
+
       # Step 1: Register the environment in prod
       - name: prod-create-environment-from-conda-file
         run: |
@@ -76,28 +101,3 @@ jobs:
                                     --max-instances 4 \
                                     --resource-group  ${{ steps.read-prod-yaml.outputs.resource_group }} \
                                     --workspace-name ${{ steps.read-prod-yaml.outputs.aml_workspace }}
-
-      # Create directory for model artifacts
-      - name: Create directory for model artifacts
-        run: mkdir -p ${{ github.workspace }}/model_artifacts
-
-      # Step 4: Export model artifacts from dev
-      - name: dev-export-model-artifact
-        run: |            
-            # get the MLFLOW TRACKING URI
-            #mlflow_tracking_uri=$(az ml workspace show --resource-group ${{ steps.read-dev-yaml.outputs.resource_group }} --name ${{ steps.read-dev-yaml.outputs.aml_workspace }} --query mlflow_tracking_uri --output tsv)
-            
-            export AZURE_CREDENTIALS="${{ secrets.AZURE_CREDENTIALS }}"
-            # get the production version of the mlflow model
-            version=$(python mlops/templates/github-workflows/query_model.py \
-                --resource_group "${{ steps.read-dev-yaml.outputs.resource_group }}" \
-                --workspace_name "${{ steps.read-dev-yaml.outputs.aml_workspace }}" \
-                ---model_name "taxi-model" )
-
-            #download the artifacts
-            python mlops/templates/github-workflows/download_model_artifacts.py \
-                --resource_group "${{ steps.read-dev-yaml.outputs.resource_group }}" \
-                --workspace_name "${{ steps.read-dev-yaml.outputs.aml_workspace }}" \
-                --model_name "taxi-model" \
-                --model_version "$version" \
-                --download_path "${{ github.workspace }}/model_artifacts"
