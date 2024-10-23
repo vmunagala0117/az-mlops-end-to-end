@@ -16,6 +16,7 @@ def parse_args():
 
 def get_azure_credential():
     '''Retrieve Azure credentials from the environment variable'''
+    print("printing az creds...")
     azure_credentials = os.environ.get('AZURE_CREDENTIALS')
     creds = json.loads(azure_credentials)
     tenant_id = creds["tenantId"]
@@ -30,15 +31,17 @@ def get_azure_credential():
 def download_model_artifacts(client, model_name, model_version, download_path):
     '''Download the artifacts of the specified model version'''
     try:
+        print(f"Start Downloading: '{model_name}' version '{model_version}'  - {download_path}")
         # Get the model by name and version
         model = client.models.get(name=model_name, version=model_version)
         
         # Download the model artifacts to the specified path
         model_uri = model.uri
         print(f"Model URI: {model.uri}")
-        local_path = client.models.download(model_uri=model_uri, download_path=download_path)
         
-        print(f"Model artifacts for '{model_name}' version '{model_version}' downloaded to: {local_path}")
+        client.models.download(name=model_name, version=model_version, download_path=download_path)
+        
+        print(f"Model artifacts for '{model_name}' version '{model_version}' downloaded to: {download_path}")
     except Exception as e:
         print(f"Error downloading model artifacts: {e}")
         exit(1)
@@ -54,7 +57,7 @@ def main(args):
         resource_group_name=args.resource_group,
         workspace_name=args.workspace_name
     )
-
+    
     # Download the model artifacts using Azure ML SDK
     download_model_artifacts(ml_client, args.model_name, args.model_version, args.download_path)
 
