@@ -68,7 +68,7 @@ jobs:
             version=$(python mlops/templates/github-workflows/query_model.py \
                 --resource_group "${{ steps.read-dev-yaml.outputs.resource_group }}" \
                 --workspace_name "${{ steps.read-dev-yaml.outputs.aml_workspace }}" \
-                ---model_name "taxi-model")
+                --model_name "taxi-model")
 
             #download the artifacts
             python mlops/templates/github-workflows/download_model_artifacts.py \
