@@ -16,7 +16,8 @@ def parse_args():
 def get_azure_credential():
     '''Retrieve Azure credentials from the environment variable'''
     try:
-        
+        print("printing az creds...")
+        print(os.getenv("AZURE_CREDENTIALS"))        
         azure_credentials = json.loads(os.getenv("AZURE_CREDENTIALS"))
         tenant_id = azure_credentials["tenantId"]
         client_id = azure_credentials["clientId"]
