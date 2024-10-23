@@ -15,21 +15,18 @@ def parse_args():
 
 def get_azure_credential():
     '''Retrieve Azure credentials from the environment variable'''
-    try:
-        print("printing az creds...")
-        print(os.getenv("AZURE_CREDENTIALS"))        
-        azure_credentials = json.loads(os.getenv("AZURE_CREDENTIALS"))
-        tenant_id = azure_credentials["tenantId"]
-        client_id = azure_credentials["clientId"]
-        client_secret = azure_credentials["clientSecret"]
-        subscription_id = azure_credentials.get("subscriptionId", None)
+    print("printing az creds...")
+    # Access credentials from environment variable
+    azure_credentials = os.environ.get('AZURE_CREDENTIALS')
+    creds = json.loads(azure_credentials)
+    tenant_id = creds["tenantId"]
+    client_id = creds["clientId"]
+    client_secret = creds["clientSecret"]
+    subscription_id = creds.get("subscriptionId", None)
 
-        # Set up the ClientSecretCredential for Azure authentication
-        credential = ClientSecretCredential(tenant_id=tenant_id, client_id=client_id, client_secret=client_secret)
-        return credential, subscription_id
-    except json.JSONDecodeError as e:
-        print(f"Error parsing AZURE_CREDENTIALS: {e}")
-        exit(1)
+    # Set up the ClientSecretCredential for Azure authentication
+    credential = ClientSecretCredential(tenant_id=tenant_id, client_id=client_id, client_secret=client_secret)
+    return credential, subscription_id
 
 def get_production_model_version(model_name):
     '''Fetch the model version marked as Production'''

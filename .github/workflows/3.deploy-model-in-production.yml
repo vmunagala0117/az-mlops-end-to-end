@@ -19,12 +19,6 @@ jobs:
         with:
           python-version: '3.x'
     
-      - name: Set AZURE_CREDENTIALS environment variable
-        run: |
-            echo "Setting AZURE_CREDENTIALS"
-            echo "${{ secrets.AZURE_CREDENTIALS }}" | jq '.' > azure_credentials.json
-            cat azure_credentials.json
-    
       #install AZ ML CLI libraries
       - name: install-extension
         run: az extension add -n ml -y
@@ -66,10 +60,6 @@ jobs:
       # Step 4: Export model artifacts from dev
       - name: dev-export-model-artifact
         run: |            
-            # get the MLFLOW TRACKING URI
-            #mlflow_tracking_uri=$(az ml workspace show --resource-group ${{ steps.read-dev-yaml.outputs.resource_group }} --name ${{ steps.read-dev-yaml.outputs.aml_workspace }} --query mlflow_tracking_uri --output tsv)
-            
-            export AZURE_CREDENTIALS="${{ secrets.AZURE_CREDENTIALS }}"
             # get the production version of the mlflow model
             version=$(python mlops/templates/github-workflows/query_model.py \
                 --resource_group "${{ steps.read-dev-yaml.outputs.resource_group }}" \
@@ -83,6 +73,8 @@ jobs:
                 --model_name "taxi-model" \
                 --model_version "$version" \
                 --download_path "${{ github.workspace }}/model_artifacts"
+        env:
+            AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 
       # Step 1: Register the environment in prod
       - name: prod-create-environment-from-conda-file
